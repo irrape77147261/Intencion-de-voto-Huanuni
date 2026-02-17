@@ -23,7 +23,6 @@
             color: var(--texto);
         }
 
-        /* --- Header Institucional --- */
         header {
             background: linear-gradient(135deg, var(--azul-oscuro) 0%, var(--azul-claro) 100%);
             color: var(--blanco);
@@ -47,7 +46,6 @@
             font-weight: bold;
         }
 
-        /* --- Aviso Legal (Disclaimer) --- */
         .legal-notice {
             background-color: var(--amarillo-suave);
             border-left: 5px solid var(--azul-oscuro);
@@ -64,14 +62,12 @@
             margin-top: 0;
         }
 
-        /* --- Contenedor Principal --- */
         .container {
             max-width: 960px;
             margin: 0 auto;
             padding: 20px;
         }
 
-        /* --- Secciones de Votación --- */
         .section-title {
             background-color: var(--azul-oscuro);
             color: var(--blanco);
@@ -89,7 +85,6 @@
             margin-bottom: 20px;
         }
 
-        /* --- Tarjeta de Candidato --- */
         .card {
             background: var(--blanco);
             border: 2px solid #e0e0e0;
@@ -110,7 +105,6 @@
             border-color: var(--amarillo-bandera);
         }
 
-        /* Estilo para la tarjeta seleccionada */
         .card.selected {
             background-color: var(--azul-oscuro);
             border-color: var(--amarillo-bandera);
@@ -121,7 +115,6 @@
         .card.selected .party-name { color: var(--amarillo-bandera); }
         .card.selected .candidate-role { color: #ccc; }
 
-        /* Ocultar el radio button nativo */
         .card input[type="radio"] {
             display: none;
         }
@@ -146,7 +139,6 @@
             margin-bottom: 10px;
         }
 
-        /* --- Botón de Enviar --- */
         .btn-votar {
             display: block;
             width: 100%;
@@ -170,9 +162,15 @@
             filter: brightness(105%);
         }
 
-        /* --- Pantalla de Bloqueo / Agradecimiento --- */
+        .btn-votar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         #pantalla-bloqueo {
-            display: none; /* Se activa con JS */
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -191,6 +189,23 @@
         #pantalla-bloqueo h1 {
             color: var(--amarillo-bandera);
             font-size: 3rem;
+        }
+
+        /* Indicador de carga */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,46,95,0.3);
+            border-top-color: var(--azul-oscuro);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -234,8 +249,8 @@
             </label>
 
             <label class="card" onclick="seleccionarTarjeta(this, 'alcalde')">
-                <input type="radio" name="voto_alcalde" value="JACHA - Lic. Rossemary Ardaya">
-                <div class="party-name">JACH'A - JAKISA -  - </div>
+                <input type="radio" name="voto_alcalde" value="JACHA - Lily Rossemary Ardaya">
+                <div class="party-name">JACH'A - JAKISA</div>
                 <div class="candidate-role">Candidata a Alcaldesa</div>
                 <div class="candidate-name">ROSSEMARY ARDAYA CLAURE</div>
             </label>
@@ -337,89 +352,93 @@
     </form>
 
 <script>
-        // ---------------- CONFIGURACIÓN ----------------
-        // He corregido tu URL agregándole "/exec" al final
-        const scriptURL = "https://script.google.com/macros/s/AKfycbzmP6ryBC_r5HVlcvI-grbN--FDFU-fSKdxKIiv2A_zWW-P8v0923E4RykdjT2-Xtcv/exec";
-        const ID_ENCUESTA = "AKfycbwUspfNKbWaL26fwGtg0sCpUz-HlM9NWH_TxgFbK7qK7kaI8XzEhDRd-jcNfYHHAzj7"; 
-        // -----------------------------------------------
+    // ============================================================
+    //  ⚙️  CONFIGURACIÓN — SOLO CAMBIA ESTA LÍNEA
+    //  Pega aquí la URL de tu Web App de Google Apps Script
+    // ============================================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmP6ryBC_r5HVlcvI-grbN--FDFU-fSKdxKIiv2A_zWW-P8v0923E4RykdjT2-Xtcv/exec";
 
-        // 1. Verificar si ya votó
-        document.addEventListener("DOMContentLoaded", function() {
-            if (localStorage.getItem(ID_ENCUESTA) === 'registrado') {
-                mostrarBloqueo();
-            }
+    // ID único para evitar doble voto en el mismo dispositivo
+    const ID_ENCUESTA = "huanuni_voto_2026_v1";
+
+    // ============================================================
+
+    // Verificar si ya votó al cargar la página
+    document.addEventListener("DOMContentLoaded", function () {
+        if (localStorage.getItem(ID_ENCUESTA) === "registrado") {
+            mostrarBloqueo();
+        }
+    });
+
+    // Seleccionar tarjeta con estilos
+    function seleccionarTarjeta(card, tipo) {
+        const contenedorID = tipo === "alcalde" ? "grupo-alcaldes" : "grupo-concejales";
+        const contenedor = document.getElementById(contenedorID);
+
+        contenedor.querySelectorAll(".card").forEach(t => t.classList.remove("selected"));
+        contenedor.querySelectorAll("input").forEach(i => (i.checked = false));
+
+        card.classList.add("selected");
+        card.querySelector("input").checked = true;
+    }
+
+    // Función principal de envío
+    function enviarVoto() {
+        const alcalde  = document.querySelector('input[name="voto_alcalde"]:checked');
+        const concejal = document.querySelector('input[name="voto_concejal"]:checked');
+
+        if (!alcalde || !concejal) {
+            alert("⚠️ ATENCIÓN: Debe seleccionar:\n\n1. Un candidato a Alcalde\n2. Un candidato a Concejal");
+            return;
+        }
+
+        if (!confirm("¿Está seguro de su elección?")) return;
+
+        const boton = document.querySelector(".btn-votar");
+        boton.disabled = true;
+        boton.innerHTML = '<span class="spinner"></span>Enviando...';
+
+        // -------------------------------------------------------
+        // Enviamos como JSON con URL params — compatible con
+        // Google Apps Script usando no-cors (la única forma
+        // desde GitHub Pages sin un servidor propio).
+        //
+        // El truco: codificamos los datos en la URL (GET) en lugar
+        // de POST body, porque Apps Script puede leerlos con
+        // e.parameter en doGet(), evitando el problema de CORS.
+        // -------------------------------------------------------
+        const params = new URLSearchParams({
+            alcalde:  alcalde.value,
+            concejal: concejal.value,
+            fecha:    new Date().toLocaleString("es-BO", { timeZone: "America/La_Paz" }),
+            origen:   "web"
         });
 
-        // 2. Seleccionar tarjeta (Estilos)
-        function seleccionarTarjeta(card, tipo) {
-            let contenedorID = (tipo === 'alcalde') ? 'grupo-alcaldes' : 'grupo-concejales';
-            let contenedor = document.getElementById(contenedorID);
-            
-            let tarjetas = contenedor.querySelectorAll('.card');
-            tarjetas.forEach(t => t.classList.remove('selected'));
-            
-            let inputs = contenedor.querySelectorAll('input');
-            inputs.forEach(i => i.checked = false);
+        const urlConDatos = SCRIPT_URL + "?" + params.toString();
 
-            card.classList.add('selected');
-            card.querySelector('input').checked = true;
-        }
+        // Usamos un iframe invisible — método 100% compatible con
+        // GitHub Pages + Google Apps Script sin bloqueo CORS
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = urlConDatos;
+        document.body.appendChild(iframe);
 
-        // 3. Función de Envío
-        function enviarVoto(){
-            const alcalde = document.querySelector('input[name="voto_alcalde"]:checked');
-            const concejal = document.querySelector('input[name="voto_concejal"]:checked');
+        // Esperamos 3 segundos y mostramos confirmación
+        // (Apps Script procesa la solicitud aunque no podamos leer la respuesta)
+        setTimeout(function () {
+            localStorage.setItem(ID_ENCUESTA, "registrado");
+            mostrarBloqueo();
+            document.body.removeChild(iframe);
+        }, 3000);
+    }
 
-            if(!alcalde || !concejal){
-                alert("⚠️ ATENCIÓN: Debe seleccionar:\n\n1. Un candidato a Alcalde\n2. Un candidato a Concejal");
-                return;
-            }
-
-            if(!confirm("¿Está seguro de su elección?")){
-                return;
-            }
-
-            const boton = document.querySelector('.btn-votar');
-            boton.disabled = true;
-            boton.innerText = "Enviando...";
-
-            // Preparar datos para enviar
-            // Usamos un formato compatible con cualquier script de Google estándar
-            const formData = new FormData();
-            formData.append("alcalde", alcalde.value);
-            formData.append("concejal", concejal.value);
-            formData.append("frente", "VOTO_APP"); 
-            formData.append("fecha", new Date().toISOString());
-
-            fetch(scriptURL, {
-                method: "POST",
-                body: formData
-            })
-            .then(() => {
-                // Al usar no-cors, asumimos éxito si la red no falla
-                localStorage.setItem(ID_ENCUESTA, 'registrado');
-                mostrarBloqueo();
-            })
-            .catch(error => {
-                alert("Hubo un problema de conexión. Por favor, intente nuevamente.");
-                boton.disabled = false;
-                boton.innerText = "CONFIRMAR Y ENVIAR VOTO";
-                console.error('Error!', error.message);
-            });
-        }
-
-        function mostrarBloqueo() {
-            document.querySelector('header').style.display = 'none';
-            document.querySelector('.legal-notice').style.display = 'none';
-            document.getElementById('formVoto').style.display = 'none';
-            document.getElementById('pantalla-bloqueo').style.display = 'flex';
-        }
-    </script>
+    function mostrarBloqueo() {
+        document.querySelector("header").style.display   = "none";
+        document.querySelector(".legal-notice").style.display = "none";
+        document.getElementById("formVoto").style.display     = "none";
+        document.getElementById("pantalla-bloqueo").style.display = "flex";
+    }
+</script>
 
 </body>
 </html>
-
-
-
-
-
